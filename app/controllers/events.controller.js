@@ -5,7 +5,9 @@ module.exports = {
   showSingle: showSingle,
   seedEvents: seedEvents,
   showCreate: showCreate,
-  processCreate: processCreate
+  processCreate: processCreate,
+  showEdit: showEdit,
+  processEdit: processEdit
 }
 
 //show all events
@@ -21,7 +23,10 @@ function showEvents(req, res) {
     }
 
   //return a view with data
-  res.render('pages/events', {events: events});
+  res.render('pages/events', {
+    events: events,
+    success: req.flash('success')
+    });
   });
 }
 
@@ -107,9 +112,49 @@ function processCreate(req, res) {
       throw err;
 
   //set a successful flash message
-  req.flash('success', 'Successfuly created event!');
+  req.flash('success', 'Successfully created event!');
 
   //redirect to the newly created event
   res.redirect(`/events/${event.slug}`);
+  });
+}
+
+function showEdit(req, res) {
+  Event.findOne({ slug: req.params.slug }, (err, event) => {
+    res.render('pages/edit', {
+      event: event,
+      errors: req.flash('errors')
+    });
+  });
+}
+
+//process the edit form
+function processEdit(req, res) {
+  //validate information
+  req.checkBody('name', 'Name is required.').notEmpty();
+  req.checkBody('description', 'Description is required.').notEmpty();
+
+  //if there are errors, redirect and save errors to flash
+  const errors = req.validationErrors();
+  if (errors) {
+    req.flash('errors', errors.map(err => err.msg));
+    return res.redirect(`/events/${req.params.slug}/edit`);
+  }
+
+  //finding a current event
+  Event.findOne({ slug: req.params.slug }, (err, events) => {
+    //updating the event
+    events.name = req.body.name;
+    events.description = req.body.description;
+
+    events.save((err) => {
+      if (err)
+        throw err;
+
+        //success flash message
+        //redirect back to the /events
+        req.flash('success', 'Successfully updated event.');
+        res.redirect('/events');
+    });
   });
 }
